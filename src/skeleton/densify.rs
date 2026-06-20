@@ -37,9 +37,7 @@
 //! tracing::info!("rotation densification added {} keyframes", n_inserted);
 //! ```
 
-use crate::gltf::{
-    AnimatedProperty, GltfAnimation, Interpolation, KeyframeValues,
-};
+use crate::gltf::{AnimatedProperty, GltfAnimation, Interpolation, KeyframeValues};
 
 /// Maximum allowed slerp arc per segment after densification, in
 /// radians. 60° is comfortably below the 180° slerp ambiguity limit
@@ -179,10 +177,7 @@ pub fn densify_one_channel(times: &mut Vec<f32>, values: &mut Vec<[f32; 4]>) -> 
             let na = dot3(prev_axis, next_axis);
             let cp = dot3(curr_axis, prev_axis);
             let cn = dot3(curr_axis, next_axis);
-            if na > threshold_neighbors_agree
-                && cp < threshold_opposed
-                && cn < threshold_opposed
-            {
+            if na > threshold_neighbors_agree && cp < threshold_opposed && cn < threshold_opposed {
                 axes[i] = [-curr_axis[0], -curr_axis[1], -curr_axis[2]];
                 angles[i] = std::f32::consts::TAU - angles[i];
             }
@@ -521,6 +516,9 @@ mod tests {
         // First original segment (q0 → q1) is small — shouldn't gain
         // keys before t = 0.1.
         let small_segment_keys = times.iter().filter(|&&t| t < 0.1 - 1e-6).count();
-        assert_eq!(small_segment_keys, 1, "small segment should have only the original starting key");
+        assert_eq!(
+            small_segment_keys, 1,
+            "small segment should have only the original starting key"
+        );
     }
 }

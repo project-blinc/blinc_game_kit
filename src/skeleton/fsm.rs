@@ -71,9 +71,9 @@
 
 use std::collections::HashMap;
 
-use blinc_core::Mat4;
-use blinc_core::draw::SkinningData;
 use crate::gltf::{GltfAnimation, GltfSkeleton};
+use blinc_core::draw::SkinningData;
+use blinc_core::Mat4;
 
 use super::Pose;
 
@@ -505,11 +505,11 @@ fn clip_duration(anim: &GltfAnimation) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use blinc_core::draw::{Bone, Skeleton};
     use crate::gltf::{
         AnimatedProperty, AnimationChannel, AnimationSampler, AnimationTarget, Interpolation,
         KeyframeValues,
     };
+    use blinc_core::draw::{Bone, Skeleton};
 
     fn ident16() -> [f32; 16] {
         [
@@ -608,9 +608,9 @@ mod tests {
         let skin = one_bone_skin();
         let clip_a = translation_clip(10.0, 0.0); // stays at x = 0
         let clip_b = translation_clip(10.0, 10.0); // grows
-        // Doctor clip_b: t=0 → x=0, so scrubbing back to t=0 gives x=0. To
-        // make the target pose visible at t=0 of the target clip, seed its
-        // start value away from zero.
+                                                   // Doctor clip_b: t=0 → x=0, so scrubbing back to t=0 gives x=0. To
+                                                   // make the target pose visible at t=0 of the target clip, seed its
+                                                   // start value away from zero.
         let clip_b = GltfAnimation {
             name: None,
             channels: vec![AnimationChannel {
@@ -663,12 +663,7 @@ mod tests {
             ClipState::new("idle", &idle).looping(true),
         ];
         let mut fsm = StateMachine::new(&skin, 0, states);
-        fsm.add_transition(Transition::new(
-            0,
-            1,
-            Condition::StateFinished,
-            0.0,
-        ));
+        fsm.add_transition(Transition::new(0, 1, Condition::StateFinished, 0.0));
 
         fsm.tick(0.5);
         assert_eq!(fsm.current(), 0);

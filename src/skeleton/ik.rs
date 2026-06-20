@@ -381,9 +381,17 @@ mod tests {
         let t = v3_cross(qxyz, v);
         let t = [t[0] * 2.0, t[1] * 2.0, t[2] * 2.0];
         let qw_v = [q[3] * v[0], q[3] * v[1], q[3] * v[2]];
-        let inner = [t[0] / 2.0 + qw_v[0], t[1] / 2.0 + qw_v[1], t[2] / 2.0 + qw_v[2]];
+        let inner = [
+            t[0] / 2.0 + qw_v[0],
+            t[1] / 2.0 + qw_v[1],
+            t[2] / 2.0 + qw_v[2],
+        ];
         let outer = v3_cross(qxyz, inner);
-        let rotated = [v[0] + outer[0] * 2.0, v[1] + outer[1] * 2.0, v[2] + outer[2] * 2.0];
+        let rotated = [
+            v[0] + outer[0] * 2.0,
+            v[1] + outer[1] * 2.0,
+            v[2] + outer[2] * 2.0,
+        ];
         assert!(approx_v3(rotated, [0.0, 1.0, 0.0], 1e-4));
     }
 
@@ -403,7 +411,12 @@ mod tests {
     fn fabrik_reaches_target_when_in_range() {
         // 3-segment chain along +X at rest, total reach = 3. Target
         // at (1, 1, 0) should converge within a couple of iterations.
-        let mut joints = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [3.0, 0.0, 0.0]];
+        let mut joints = [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+        ];
         let lengths = [1.0, 1.0, 1.0];
         let reached = solve_fabrik(&mut joints, &lengths, [1.0, 1.0, 0.0], 16, 1e-3);
         assert!(reached);
@@ -418,7 +431,12 @@ mod tests {
     #[test]
     fn fabrik_extends_when_target_unreachable() {
         // 3-segment chain, total reach 3; target at (10, 0, 0).
-        let mut joints = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0], [3.0, 0.0, 0.0]];
+        let mut joints = [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+        ];
         let lengths = [1.0, 1.0, 1.0];
         let reached = solve_fabrik(&mut joints, &lengths, [10.0, 0.0, 0.0], 16, 1e-3);
         assert!(!reached);
@@ -447,10 +465,22 @@ mod tests {
     fn fabrik_no_op_on_bad_inputs() {
         let mut joints = [[0.0, 0.0, 0.0]];
         let lengths = [];
-        assert!(!solve_fabrik(&mut joints, &lengths, [1.0, 0.0, 0.0], 4, 1e-3));
+        assert!(!solve_fabrik(
+            &mut joints,
+            &lengths,
+            [1.0, 0.0, 0.0],
+            4,
+            1e-3
+        ));
         // Mismatched lengths count → no-op.
         let mut joints2 = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]];
         let bad_lengths = [1.0];
-        assert!(!solve_fabrik(&mut joints2, &bad_lengths, [0.5, 0.5, 0.0], 4, 1e-3));
+        assert!(!solve_fabrik(
+            &mut joints2,
+            &bad_lengths,
+            [0.5, 0.5, 0.0],
+            4,
+            1e-3
+        ));
     }
 }

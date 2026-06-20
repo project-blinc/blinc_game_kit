@@ -297,7 +297,11 @@ pub struct LoadProgress {
 impl LoadProgress {
     #[inline]
     fn stage(stage: LoadStage) -> Self {
-        Self { stage, current: 0, total: 0 }
+        Self {
+            stage,
+            current: 0,
+            total: 0,
+        }
     }
 }
 
@@ -457,10 +461,8 @@ async fn yield_now() {
         let cb: Closure<dyn FnMut()> = Closure::once(move || {
             let _ = resolve.call0(&wasm_bindgen::JsValue::NULL);
         });
-        let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
-            cb.as_ref().unchecked_ref(),
-            0,
-        );
+        let _ = window
+            .set_timeout_with_callback_and_timeout_and_arguments_0(cb.as_ref().unchecked_ref(), 0);
         // The Closure has to outlive the setTimeout callback it's
         // been handed to. `forget()` leaks it intentionally — the
         // browser will drop the reference after firing once.
@@ -488,7 +490,9 @@ fn downsample_images(images: &mut [gltf::image::Data], max: u32) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         use rayon::prelude::*;
-        images.par_iter_mut().for_each(|img| downsample_one(img, max));
+        images
+            .par_iter_mut()
+            .for_each(|img| downsample_one(img, max));
     }
     #[cfg(target_arch = "wasm32")]
     {

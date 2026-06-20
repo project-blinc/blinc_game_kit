@@ -133,18 +133,16 @@ pub fn parse_material(mat: &gltf::Material, decoded_images: &[Option<TextureData
     // extension (if present) off the same call without threading a
     // shared `Option<Info>` through the Sg/MR branches below.
     let base_color_info = pbr.base_color_texture();
-    let texture_transform =
-        base_color_info
-            .as_ref()
-            .and_then(|info| info.texture_transform())
-            .map(|tt| blinc_core::TextureTransform {
-                offset: tt.offset(),
-                rotation: tt.rotation(),
-                scale: tt.scale(),
-            });
-    let base_color_texture = sg_base_color_texture.unwrap_or_else(|| {
-        base_color_info.and_then(|info| tex(info.texture().source().index()))
-    });
+    let texture_transform = base_color_info
+        .as_ref()
+        .and_then(|info| info.texture_transform())
+        .map(|tt| blinc_core::TextureTransform {
+            offset: tt.offset(),
+            rotation: tt.rotation(),
+            scale: tt.scale(),
+        });
+    let base_color_texture = sg_base_color_texture
+        .unwrap_or_else(|| base_color_info.and_then(|info| tex(info.texture().source().index())));
     let metallic_roughness_texture = pbr
         .metallic_roughness_texture()
         .and_then(|info| tex(info.texture().source().index()));

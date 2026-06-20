@@ -25,13 +25,19 @@ pub fn sample(sampler: &AnimationSampler, t: f32) -> Option<Sampled> {
         return None;
     }
     match (&sampler.values, sampler.interpolation) {
-        (KeyframeValues::Vec3(v), Interpolation::Step) => Some(Sampled::Vec3(step3(sampler.times.as_slice(), v, t))),
-        (KeyframeValues::Vec3(v), Interpolation::Linear) => Some(Sampled::Vec3(lerp3(sampler.times.as_slice(), v, t))),
+        (KeyframeValues::Vec3(v), Interpolation::Step) => {
+            Some(Sampled::Vec3(step3(sampler.times.as_slice(), v, t)))
+        }
+        (KeyframeValues::Vec3(v), Interpolation::Linear) => {
+            Some(Sampled::Vec3(lerp3(sampler.times.as_slice(), v, t)))
+        }
         (KeyframeValues::Vec3(v), Interpolation::CubicSpline) => {
             Some(Sampled::Vec3(cubic3(sampler.times.as_slice(), v, t)))
         }
 
-        (KeyframeValues::Vec4(v), Interpolation::Step) => Some(Sampled::Vec4(step4(sampler.times.as_slice(), v, t))),
+        (KeyframeValues::Vec4(v), Interpolation::Step) => {
+            Some(Sampled::Vec4(step4(sampler.times.as_slice(), v, t)))
+        }
         (KeyframeValues::Vec4(v), Interpolation::Linear) => {
             // Rotation channels use quaternions — slerp rather than
             // per-component lerp so the shortest-arc interpolation is

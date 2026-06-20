@@ -40,11 +40,11 @@
 
 use std::sync::Arc;
 
-use blinc_core::draw::{AlphaMode, MeshData, Skeleton, SkinningData};
-use blinc_core::Mat4;
 use crate::gltf::{
     AnimatedProperty, AnimationSampler, GltfAnimation, GltfScene, GltfSkeleton, NodeTransform,
 };
+use blinc_core::draw::{AlphaMode, MeshData, Skeleton, SkinningData};
+use blinc_core::Mat4;
 
 mod densify;
 mod fsm;
@@ -64,10 +64,7 @@ use ik::{v3_length, v3_normalise_or, v3_sub};
 ///
 /// Exposed so callers can write their own pose / node-transform
 /// machinery without depending on blinc_skeleton's `Pose` struct.
-pub fn sample_channel(
-    sampler: &crate::gltf::AnimationSampler,
-    t: f32,
-) -> Option<Sampled> {
+pub fn sample_channel(sampler: &crate::gltf::AnimationSampler, t: f32) -> Option<Sampled> {
     sample::sample(sampler, t)
 }
 
@@ -316,7 +313,11 @@ impl JointTransform {
                 [0.0, 0.0, 0.0, 1.0],
             ],
         };
-        let t = Mat4::translation(self.translation[0], self.translation[1], self.translation[2]);
+        let t = Mat4::translation(
+            self.translation[0],
+            self.translation[1],
+            self.translation[2],
+        );
         t.mul(&r).mul(&s)
     }
 }
@@ -677,8 +678,7 @@ impl Pose {
             .and_then(|p| world_rots.get(p).copied())
             .unwrap_or([0.0, 0.0, 0.0, 1.0]);
         let current_world_root_rot = world_rots[root];
-        let new_world_root_rot =
-            normalize4(quat_mul(root_delta_world, current_world_root_rot));
+        let new_world_root_rot = normalize4(quat_mul(root_delta_world, current_world_root_rot));
         let new_local_root_rot =
             normalize4(quat_mul(quat_conj(parent_world_rot), new_world_root_rot));
 
@@ -687,8 +687,10 @@ impl Pose {
         // but before middle's own delta, is `root_delta_world · current_middle`.
         let middle_after_root = quat_mul(root_delta_world, current_world_middle_rot);
         let new_world_middle_rot = normalize4(quat_mul(middle_delta_world, middle_after_root));
-        let new_local_middle_rot =
-            normalize4(quat_mul(quat_conj(new_world_root_rot), new_world_middle_rot));
+        let new_local_middle_rot = normalize4(quat_mul(
+            quat_conj(new_world_root_rot),
+            new_world_middle_rot,
+        ));
 
         self.joints[root].rotation = new_local_root_rot;
         self.joints[middle].rotation = new_local_middle_rot;
@@ -738,8 +740,7 @@ impl Pose {
             .and_then(|p| world_rots.get(p).copied())
             .unwrap_or([0.0, 0.0, 0.0, 1.0]);
         let new_world_rot = normalize4(quat_mul(delta_world, world_rots[bone]));
-        let new_local_rot =
-            normalize4(quat_mul(quat_conj(parent_world_rot), new_world_rot));
+        let new_local_rot = normalize4(quat_mul(quat_conj(parent_world_rot), new_world_rot));
         self.joints[bone].rotation = new_local_rot;
     }
 
@@ -1066,7 +1067,11 @@ pub(crate) fn quat_rotate_vec(q: [f32; 4], v: [f32; 3]) -> [f32; 3] {
         qxyz[2] * inner[0] - qxyz[0] * inner[2],
         qxyz[0] * inner[1] - qxyz[1] * inner[0],
     ];
-    [v[0] + 2.0 * outer[0], v[1] + 2.0 * outer[1], v[2] + 2.0 * outer[2]]
+    [
+        v[0] + 2.0 * outer[0],
+        v[1] + 2.0 * outer[1],
+        v[2] + 2.0 * outer[2],
+    ]
 }
 
 fn quat_to_mat4(q: [f32; 4]) -> Mat4 {
@@ -1183,9 +1188,15 @@ pub fn build_frame_draws(
         let Some(mesh_idx) = node.mesh else { continue };
         let is_skinned = node.skin.is_some();
         let node_world = world.get(node_idx).copied().unwrap_or(Mat4::IDENTITY);
-        let draw_xf = if is_skinned { Mat4::IDENTITY } else { node_world };
+        let draw_xf = if is_skinned {
+            Mat4::IDENTITY
+        } else {
+            node_world
+        };
         let node_morphs = weights_by_node.get(&node_idx);
-        let Some(prims) = base_meshes.get(mesh_idx) else { continue };
+        let Some(prims) = base_meshes.get(mesh_idx) else {
+            continue;
+        };
 
         for prim in prims {
             let has_morphs = !prim.morph_targets.is_empty();
@@ -1354,7 +1365,11 @@ mod tests {
         assert!(approx_eq(base.scale[0], 3.0, 1e-4));
         // rotation should be ~90° around Y — quaternion w component
         // cos(45°) ≈ 0.7071.
-        assert!(approx_eq(base.rotation[3], std::f32::consts::FRAC_1_SQRT_2, 1e-4));
+        assert!(approx_eq(
+            base.rotation[3],
+            std::f32::consts::FRAC_1_SQRT_2,
+            1e-4
+        ));
     }
 
     #[test]
@@ -1373,7 +1388,11 @@ mod tests {
         assert!(approx_eq(base.translation[0], 5.0, 1e-4));
         // 50% slerp between identity and 180°-around-Y = 90°-around-Y.
         // The w component of a 90° rotation is cos(45°) = 1/sqrt(2).
-        assert!(approx_eq(base.rotation[3], std::f32::consts::FRAC_1_SQRT_2, 1e-4));
+        assert!(approx_eq(
+            base.rotation[3],
+            std::f32::consts::FRAC_1_SQRT_2,
+            1e-4
+        ));
     }
 
     #[test]
@@ -1470,7 +1489,11 @@ mod tests {
         // 4 / 2 = 2.
         assert!(approx_eq(d.scale[0], 2.0, 1e-5));
         // Rotation delta: conj(identity) · quat_y(90°) = quat_y(90°).
-        assert!(approx_eq(d.rotation[3], std::f32::consts::FRAC_1_SQRT_2, 1e-4));
+        assert!(approx_eq(
+            d.rotation[3],
+            std::f32::consts::FRAC_1_SQRT_2,
+            1e-4
+        ));
     }
 
     #[test]
@@ -1513,13 +1536,29 @@ mod tests {
         let delta = JointTransform::delta(&rest, &target);
         let mut reconstructed = rest;
         reconstructed.apply_delta(&delta, 1.0);
-        assert!(approx_eq(reconstructed.translation[0], target.translation[0], 1e-4));
-        assert!(approx_eq(reconstructed.translation[1], target.translation[1], 1e-4));
-        assert!(approx_eq(reconstructed.translation[2], target.translation[2], 1e-4));
+        assert!(approx_eq(
+            reconstructed.translation[0],
+            target.translation[0],
+            1e-4
+        ));
+        assert!(approx_eq(
+            reconstructed.translation[1],
+            target.translation[1],
+            1e-4
+        ));
+        assert!(approx_eq(
+            reconstructed.translation[2],
+            target.translation[2],
+            1e-4
+        ));
         assert!(approx_eq(reconstructed.scale[0], target.scale[0], 1e-4));
         // Rotation: reconstructed should match target up to slight
         // accumulated floating-point drift in the slerp/mul path.
-        assert!(approx_eq(reconstructed.rotation[3], target.rotation[3], 1e-4));
+        assert!(approx_eq(
+            reconstructed.rotation[3],
+            target.rotation[3],
+            1e-4
+        ));
     }
 
     #[test]
@@ -1582,7 +1621,11 @@ mod tests {
 
         // After IK, end joint's world position should be near target.
         let world = pose.world_matrices(&skel);
-        let end_pos = [world[2].cols[3][0], world[2].cols[3][1], world[2].cols[3][2]];
+        let end_pos = [
+            world[2].cols[3][0],
+            world[2].cols[3][1],
+            world[2].cols[3][2],
+        ];
         assert!(
             approx_eq(end_pos[0], 2.0, 1e-3),
             "end x = {} (expected ~2.0)",
