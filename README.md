@@ -7,6 +7,12 @@ Merges the former [`blinc_gltf`](https://github.com/project-blinc/blinc_gltf)
 (runtime poser) into a single crate so consumers carry one git pin
 instead of two and feature gating lives in one place.
 
+
+
+https://github.com/user-attachments/assets/e1c4179c-40b4-42e6-a8d2-4aa0d5c57a43
+
+
+
 Re-exposes both API surfaces behind top-level modules so the original
 `blinc_gltf::Foo` / `blinc_skeleton::Bar` mental model carries over
 verbatim:
