@@ -1,0 +1,88 @@
+[package]
+name = "blinc_game_kit"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Game / 3D-asset toolkit for Blinc — bundles the glTF 2.0 loader (formerly blinc_gltf) and the runtime skeleton poser (formerly blinc_skeleton) into one crate"
+repository = "https://github.com/project-blinc/blinc_game_kit"
+readme = "README.md"
+rust-version = "1.75"
+keywords = ["gltf", "3d", "skeleton", "animation", "blinc"]
+categories = ["rendering::data-formats", "graphics", "game-development"]
+
+# Standalone package — not a member of the Blinc workspace. Lives under
+# `/packages/` which is gitignored and workspace-excluded.
+#
+# Built by merging the two former sibling crates `blinc_gltf` (loader)
+# and `blinc_skeleton` (runtime poser). Skeleton consumes types from
+# the loader heavily, so the two split into one package; everything is
+# re-exposed behind top-level modules `gltf` and `skeleton` so the
+# old `blinc_gltf::Foo` / `blinc_skeleton::Bar` mental model carries
+# over verbatim as `blinc_game_kit::gltf::Foo` /
+# `blinc_game_kit::skeleton::Bar`.
+
+[dependencies]
+# Pinned `git` deps on the Blinc upstream. Cargo doesn't allow `path`
+# alongside `git` in the same entry, so consumers wanting to develop
+# this crate against a local Blinc checkout should add a `[patch]`
+# table in their workspace `Cargo.toml`:
+#
+#     [patch."https://github.com/project-blinc/Blinc.git"]
+#     blinc_core = { path = "crates/blinc_core" }
+#     blinc_platform = { path = "crates/blinc_platform" }
+#
+#     [patch."https://github.com/project-blinc/blinc_canvas_kit.git"]
+#     blinc_canvas_kit = { path = "packages/blinc_canvas_kit" }
+#
+# Bump the Blinc revs in lockstep with the Blinc repo's `main`.
+blinc_core = { git = "https://github.com/project-blinc/Blinc.git", rev = "aa5ed9b8e949d40a0012612b5880e89934ef69de" }
+blinc_canvas_kit = { git = "https://github.com/project-blinc/blinc_canvas_kit.git", rev = "da0d0540b82a0dc940351abf957a0499f4e9da11" }
+# Optional cross-platform asset loader integration. Gated behind the
+# `platform-assets` feature so pure-desktop users can keep depending
+# on `std::fs` via `load_path` without pulling in the platform crate.
+blinc_platform = { git = "https://github.com/project-blinc/Blinc.git", rev = "aa5ed9b8e949d40a0012612b5880e89934ef69de", optional = true }
+
+# Upstream glTF parser.
+gltf = { version = "1.4", default-features = false, features = [
+    "utils",
+    "names",
+    "extras",
+    "KHR_materials_unlit",
+    "KHR_materials_emissive_strength",
+    "KHR_materials_pbrSpecularGlossiness",
+    "KHR_texture_transform",
+    "import",
+] }
+
+# Image decoding for glTF textures (PNG / JPEG → raw RGBA).
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+
+# Base64 decoder for glTF `data:...;base64,...` URIs.
+base64 = "0.22"
+
+thiserror = "2.0"
+
+tracing = "0.1"
+
+# Pure-Rust BC1 / BC3 / BC4 encoder. Opt-in via the `bc-encode`
+# feature.
+tbc = { version = "0.3", optional = true }
+
+# Native-only data-parallel image decode + downsample.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rayon = "1.10"
+
+# Wasm async loader yield-to-event-loop primitive.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["Window"] }
+
+[features]
+default = []
+# Enables `load_asset()` — cross-platform glTF loading via the global
+# `blinc_platform::assets` loader.
+platform-assets = ["dep:blinc_platform"]
+# Enables runtime BC1 / BC3 / BC4 encoding of decoded glTF textures.
+bc-encode = ["dep:tbc"]
