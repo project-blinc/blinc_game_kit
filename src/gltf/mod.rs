@@ -389,10 +389,30 @@ where
 
     progress(LoadProgress::stage(LoadStage::Buffers));
     yield_now().await;
+    // The document is small and lands first; the buffers it names can still be in flight.
+    wait_for_uris(
+        gltf_obj
+            .document
+            .buffers()
+            .filter_map(|b| match b.source() {
+                gltf::buffer::Source::Uri(uri) => Some(uri),
+                gltf::buffer::Source::Bin => None,
+            }),
+        base_dir,
+    )
+    .await;
     let buffers = resolve_buffers(&gltf_obj, base_dir)?;
 
     progress(LoadProgress::stage(LoadStage::Images));
     yield_now().await;
+    wait_for_uris(
+        gltf_obj.document.images().filter_map(|i| match i.source() {
+            gltf::image::Source::Uri { uri, .. } => Some(uri),
+            gltf::image::Source::View { .. } => None,
+        }),
+        base_dir,
+    )
+    .await;
     // Yielding variant so wasm's single-threaded executor doesn't
     // freeze the browser tab for seconds while decoding every
     // texture back-to-back.
@@ -403,6 +423,27 @@ where
     let scene = from_import(&gltf_obj.document, &buffers, images)?;
     progress(LoadProgress::stage(LoadStage::Done));
     Ok(scene)
+}
+
+/// Wait until each external URI is in the loader cache, or the preload has settled (a missing
+/// asset is then reported by the read that needs it).
+#[cfg(feature = "platform-assets")]
+async fn wait_for_uris<'a>(uris: impl Iterator<Item = &'a str>, base_dir: &str) {
+    for uri in uris {
+        if uri.starts_with("data:") {
+            continue;
+        }
+        let full = if base_dir.is_empty() {
+            uri.to_string()
+        } else {
+            format!("{}/{}", base_dir, uri)
+        };
+        while !blinc_platform::assets::asset_exists(&full)
+            && !blinc_platform::assets::preload_settled()
+        {
+            yield_now().await;
+        }
+    }
 }
 
 /// Cooperative-yield future. Awaiting it hands control back to the
