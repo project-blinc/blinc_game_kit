@@ -451,18 +451,21 @@ async fn yield_now() {
     use wasm_bindgen::closure::Closure;
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
-    let Some(window) = web_sys::window() else {
-        // No window (worker context?) — fall back to microtask yield.
-        // Better than nothing, even if it doesn't actually let the
-        // browser paint.
+    // `setTimeout` exists on a window and on a worker's global scope alike. Without a macrotask
+    // turn here, a wait loop polling for a preload spins forever in a worker and starves the
+    // fetches that would end it.
+    let global = js_sys::global();
+    let Some(set_timeout) = js_sys::Reflect::get(&global, &"setTimeout".into())
+        .ok()
+        .and_then(|value| value.dyn_into::<js_sys::Function>().ok())
+    else {
         return;
     };
     let promise = js_sys::Promise::new(&mut |resolve, _reject| {
         let cb: Closure<dyn FnMut()> = Closure::once(move || {
             let _ = resolve.call0(&wasm_bindgen::JsValue::NULL);
         });
-        let _ = window
-            .set_timeout_with_callback_and_timeout_and_arguments_0(cb.as_ref().unchecked_ref(), 0);
+        let _ = set_timeout.call2(&global, cb.as_ref().unchecked_ref(), &0.into());
         // The Closure has to outlive the setTimeout callback it's
         // been handed to. `forget()` leaks it intentionally — the
         // browser will drop the reference after firing once.
