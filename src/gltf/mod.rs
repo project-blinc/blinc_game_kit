@@ -387,36 +387,52 @@ where
     let base_dir: &str = path.rsplit_once('/').map(|(dir, _)| dir).unwrap_or("");
     let gltf_obj = gltf::Gltf::from_slice(&bytes)?;
 
-    progress(LoadProgress::stage(LoadStage::Buffers));
-    yield_now().await;
-    // The document is small and lands first; the buffers it names can still be in flight.
-    wait_for_uris(
+    // Textures that are separate files arrive long before a large buffer, so they are decoded
+    // while it is still downloading. Textures stored in a buffer view need the buffers first.
+    let images_in_buffers = gltf_obj
+        .document
+        .images()
+        .any(|i| matches!(i.source(), gltf::image::Source::View { .. }));
+    let image_uris = || {
+        gltf_obj.document.images().filter_map(|i| match i.source() {
+            gltf::image::Source::Uri { uri, .. } => Some(uri),
+            gltf::image::Source::View { .. } => None,
+        })
+    };
+    let buffer_uris = || {
         gltf_obj
             .document
             .buffers()
             .filter_map(|b| match b.source() {
                 gltf::buffer::Source::Uri(uri) => Some(uri),
                 gltf::buffer::Source::Bin => None,
-            }),
-        base_dir,
-    )
-    .await;
-    let buffers = resolve_buffers(&gltf_obj, base_dir)?;
+            })
+    };
 
-    progress(LoadProgress::stage(LoadStage::Images));
-    yield_now().await;
-    wait_for_uris(
-        gltf_obj.document.images().filter_map(|i| match i.source() {
-            gltf::image::Source::Uri { uri, .. } => Some(uri),
-            gltf::image::Source::View { .. } => None,
-        }),
-        base_dir,
-    )
-    .await;
-    // Yielding variant so wasm's single-threaded executor doesn't
-    // freeze the browser tab for seconds while decoding every
-    // texture back-to-back.
-    let images = resolve_images_async(&gltf_obj, base_dir, &buffers, opts.max_texture_size).await?;
+    let (buffers, images) = if images_in_buffers {
+        progress(LoadProgress::stage(LoadStage::Buffers));
+        yield_now().await;
+        wait_for_uris(buffer_uris(), base_dir).await;
+        let buffers = resolve_buffers(&gltf_obj, base_dir)?;
+        progress(LoadProgress::stage(LoadStage::Images));
+        yield_now().await;
+        wait_for_uris(image_uris(), base_dir).await;
+        let images =
+            resolve_images_async(&gltf_obj, base_dir, &buffers, opts.max_texture_size).await?;
+        (buffers, images)
+    } else {
+        progress(LoadProgress::stage(LoadStage::Images));
+        yield_now().await;
+        wait_for_uris(image_uris(), base_dir).await;
+        // Yielding variant so wasm's single-threaded executor doesn't freeze the browser tab
+        // for seconds while decoding every texture back-to-back.
+        let images = resolve_images_async(&gltf_obj, base_dir, &[], opts.max_texture_size).await?;
+        progress(LoadProgress::stage(LoadStage::Buffers));
+        yield_now().await;
+        wait_for_uris(buffer_uris(), base_dir).await;
+        let buffers = resolve_buffers(&gltf_obj, base_dir)?;
+        (buffers, images)
+    };
 
     progress(LoadProgress::stage(LoadStage::Building));
     yield_now().await;
